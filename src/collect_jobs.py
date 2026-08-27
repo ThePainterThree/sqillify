@@ -1,21 +1,17 @@
 import json
 from pathlib import Path
-
 import requests
-
 
 API_URL = "https://www.arbeitnow.com/api/job-board-api"
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-OUTPUT_FILE = PROJECT_ROOT / "data" / "raw_jobs.json"
-
+OUTPUT_FILE = PROJECT_ROOT / "data" / "bronze" / "raw_jobs.json"
 
 response = requests.get(API_URL, timeout=30)
 response.raise_for_status()
 
 api_result = response.json()
 jobs = api_result["data"]
-
 
 # Save the original jobs, no transforamtion
 with OUTPUT_FILE.open("w", encoding="utf-8") as file:
@@ -24,8 +20,6 @@ with OUTPUT_FILE.open("w", encoding="utf-8") as file:
 print("Status code:", response.status_code)
 print("Number of jobs received:", len(jobs))
 
-
-# preview of the first job
 first_job = jobs[0]
 
 print("\nFirst job:")
@@ -38,5 +32,4 @@ print("Tags:", first_job["tags"])
 print("Created at:", first_job["created_at"])
 print("URL:", first_job["url"])
 print("Description preview:", first_job["description"][:200])
-
 print(f"\nRaw jobs saved to: {OUTPUT_FILE}")

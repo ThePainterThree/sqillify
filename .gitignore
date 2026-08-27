@@ -2,4 +2,6 @@
 __pycache__/
 .env
 .DS_Store
-data/raw_jobs.json
+data/bronze/raw_jobs.json
+data/silver/standard_jobs.json
+data/gold/*.csv
