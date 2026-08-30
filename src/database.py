@@ -41,7 +41,7 @@ def write_jobs_to_mysql(
     if batch_df.isEmpty():
         return
 
-    mysql_df = batch_df.select(
+    mysql_df = batch_df.dropDuplicates(["job_id"]).select(
         "job_id",
         "title",
         "company",
