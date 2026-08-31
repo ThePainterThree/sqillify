@@ -9,6 +9,7 @@
   "databricks",
   "tableau",
   "power bi",
+
   "javascript",
   "typescript",
   "c#",
@@ -20,6 +21,48 @@
   "jira",
   "confluence",
   "bitbucket",
+  "chakra ui",
+  "tailwind css",
+
+  "pandas",
+  "numpy",
+  "jupyter",
+  "pyspark",
+
+  "mysql",
+  "postgresql",
+  "sqlite",
+  "mongodb",
+  "redis",
+
+  "docker",
+  "kubernetes",
+  "terraform",
+  "linux",
+  "bash",
+  "git",
   "github",
-  "chakra ui"
+
+  "aws",
+  "azure",
+  "google cloud",
+  "gcp",
+
+  "hadoop",
+  "hive",
+  "flink",
+  "elasticsearch",
+
+  "rest api",
+  "graphql",
+  "fastapi",
+  "flask",
+  "django",
+
+  "etl",
+  "elt",
+  "data warehouse",
+  "data lake",
+  "data modeling",
+  "ci/cd"
 ]
