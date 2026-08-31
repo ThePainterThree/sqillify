@@ -5,3 +5,4 @@ __pycache__/
 data/bronze/raw_jobs.json
 data/silver/standard_jobs.json
 data/gold/*.csv
+data/checkpoints/

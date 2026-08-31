@@ -3,13 +3,14 @@ from pathlib import Path
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import col, from_json
 from pyspark.sql.types import ArrayType, BooleanType, StringType, StructField, StructType
-from matching import add_experience_level, add_skill_matches, filter_suitable_jobs
+from database import write_jobs_to_mysql
+from matching import add_experience_level, add_skill_matches, extract_ad_skills
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 SKILLS_FILE = PROJECT_ROOT / "skills.json"
 
 with open(SKILLS_FILE, "r", encoding="utf-8") as file:
-    SKILLS = json.load(file)
+    SKILLS_LIST = json.load(file)
 
 spark = SparkSession.builder.appName("SqillifyKafkaReader").getOrCreate()
 spark.sparkContext.setLogLevel("WARN")
@@ -51,26 +52,20 @@ jobs_df = (
 )
 
 jobs_df = add_experience_level(jobs_df)
-jobs_df = add_skill_matches(jobs_df, SKILLS)
-matched_jobs_df = filter_suitable_jobs(jobs_df)
+jobs_df = extract_ad_skills(jobs_df, SKILLS_LIST)
 
-output = matched_jobs_df.select(
-    "title",
-    "company",
-    "experience_level",
-    "location",
-    "remote",
-    "matched_skills",
-    "match_count",
-    "job_url",
+checkpoint_path = (
+    PROJECT_ROOT
+    / "data"
+    / "checkpoints"
+    / "mysql_jobs"
 )
 
 query = (
-    output.writeStream
-    .format("console")
+    jobs_df.writeStream
+    .foreachBatch(write_jobs_to_mysql)
     .outputMode("append")
-    .option("truncate", False)
-    .option("numRows", 5)
+    .option("checkpointLocation", str(checkpoint_path))
     .trigger(availableNow=True)
     .start()
 )

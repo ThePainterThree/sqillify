@@ -49,8 +49,8 @@ def write_jobs_to_mysql(
         "location",
         "remote",
         "description",
-        to_json(col("matched_skills")).alias("matched_skills"),
-        "match_count",
+        to_json(col("ad_skills_found")).alias("ad_skills_found"),
+        "ad_skills_count",
         "published_at",
         "job_url",
         "source",
@@ -60,7 +60,7 @@ def write_jobs_to_mysql(
         mysql_df.write
         .format("jdbc")
         .option("url", JDBC_URL)
-        .option("dbtable", "matched_jobs")
+        .option("dbtable", "jobs")
         .option("user", MYSQL_USER)
         .option("password", MYSQL_PASSWORD)
         .option("driver", "com.mysql.cj.jdbc.Driver")

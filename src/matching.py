@@ -20,36 +20,36 @@ def add_experience_level(jobs_df: DataFrame) -> DataFrame:
         )
         .when(
             lower(col("title")).rlike(
-                r"\b(senior|sr\.?|lead|principal|director)\b|head of"
+                r"\b(senior|sr\.?|lead|principal|director|manager)\b|head of"
             ),
             "senior",
         )
         .otherwise("unspecified"),
     )
 
-def add_skill_matches(
+def extract_ad_skills(
     jobs_df: DataFrame,
-    skills: Sequence[str],
+    skills_list: Sequence[str],
 ) -> DataFrame:
-
-    skill_matches = [
+    ad_skill_matches = [
         when(
             lower(col("description")).rlike(
                 rf"(?<![a-z0-9]){re.escape(skill.lower())}(?![a-z0-9])"
             ),
             lit(skill),
         )
-        for skill in skills
+        for skill in skills_list
     ]
+
     return (
         jobs_df
         .withColumn(
-            "matched_skills",
-            array_compact(array(*skill_matches)),
+            "ad_skills_found",
+            array_compact(array(*ad_skill_matches)),
         )
         .withColumn(
-            "match_count",
-            size(col("matched_skills")),
+            "ad_skills_count",
+            size(col("ad_skills_found")),
         )
     )
 
