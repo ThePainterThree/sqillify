@@ -2,7 +2,7 @@ import json
 import unittest
 from pathlib import Path
 from pyspark.sql import SparkSession
-from src.matching import add_experience_level, add_skill_matches, filter_suitable_jobs
+from src.matching import add_experience_level, extract_ad_skills, filter_suitable_jobs
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 SKILLS_FILE = PROJECT_ROOT / "skills.json"
@@ -60,6 +60,10 @@ class TestJobMatching(unittest.TestCase):
                 "Senior Python Engineer",
                 "Advanced Python experience.",
             ),
+            (
+                "Engineering Manager",
+                "Lead an engineering team.",
+            ),
         ]
 
         jobs_df = self.spark.createDataFrame(
@@ -68,7 +72,7 @@ class TestJobMatching(unittest.TestCase):
         )
 
         jobs_df = add_experience_level(jobs_df)
-        self.result_df = add_skill_matches(jobs_df, SKILLS)
+        self.result_df = extract_ad_skills(jobs_df, SKILLS)
 
     def test_false_skill_matches(self):
         results = {
@@ -77,10 +81,20 @@ class TestJobMatching(unittest.TestCase):
         }
 
         self.assertEqual(
-            results["NoSQL Engineer"]["matched_skills"],
+            results["NoSQL Engineer"]["ad_skills_found"],
             [],
         )
+    def test_manager_classification(self):
+        results = {
+            row["title"]: row["experience_level"]
+            for row in self.result_df.collect()
+        }
 
+        self.assertEqual(
+            results["Engineering Manager"],
+            "senior",
+        )
+    
     def test_junior_classification(self):
         results = {
             row["title"]: row["experience_level"]

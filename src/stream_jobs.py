@@ -4,7 +4,7 @@ from pyspark.sql import SparkSession
 from pyspark.sql.functions import col, from_json
 from pyspark.sql.types import ArrayType, BooleanType, StringType, StructField, StructType
 from database import write_jobs_to_mysql
-from matching import add_experience_level, add_skill_matches, extract_ad_skills
+from matching import add_experience_level, extract_ad_skills
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 SKILLS_FILE = PROJECT_ROOT / "skills.json"
