@@ -56,7 +56,7 @@ def extract_ad_skills(
 def filter_suitable_jobs(jobs_df: DataFrame) -> DataFrame:
     return (
         jobs_df
-        .filter(col("match_count") > 0)
+        .filter(col("ad_skills_count") > 0)
         .filter(
             col("experience_level").isin(
                 "junior",
