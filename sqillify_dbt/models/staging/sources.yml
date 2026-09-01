@@ -1,0 +1,9 @@
+version: 2
+
+sources:
+  - name: sqillify
+    schema: sqillify
+    tables:
+      - name: jobs
+      - name: candidate_profiles
+      - name: candidate_skills

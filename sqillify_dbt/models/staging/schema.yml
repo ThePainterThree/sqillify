@@ -1,0 +1,134 @@
+version: 2
+
+models:
+  - name: stg_jobs
+    description: Clean staging view of jobs processed by Spark.
+    columns:
+      - name: job_id
+        tests:
+          - not_null
+          - unique
+
+      - name: title
+        tests:
+          - not_null
+
+      - name: company
+        tests:
+          - not_null
+
+  - name: mart_skill_demand
+    description: Number of distinct jobs mentioning each detected skill.
+    columns:
+      - name: skill_name
+        description: Skill detected by our configured skill extractor.
+        tests:
+          - not_null
+          - unique
+
+      - name: job_count
+        description: Number of distinct jobs mentioning this skill.
+        tests:
+          - not_null
+
+  - name: mart_jobs_by_experience
+    description: Number of jobs in each experience level classified by our pipeline.
+    columns:
+      - name: experience_level
+        tests:
+          - not_null
+          - unique
+          - accepted_values:
+              values: ["senior", "unspecified", "student", "junior"]
+
+      - name: job_count
+        description: Number of distinct jobs at this experience level.
+        tests:
+          - not_null
+
+  - name: mart_jobs_by_remote
+    description: Number of jobs grouped by remote status.
+    columns:
+      - name: remote_status
+        description: YES for remote jobs, NO for non-remote jobs, and UNKNOWN when unspecified.
+        tests:
+          - not_null
+          - unique
+          - accepted_values:
+              values: ["YES", "NO", "UNKNOWN"]
+
+      - name: job_count
+        description: Number of distinct jobs with this remote status.
+        tests:
+          - not_null
+
+  - name: mart_candidate_job_matches
+    description: One row per candidate-job pair with at least one matching skill.
+    columns:
+      - name: candidate_id
+        description: Identifier of the candidate.
+        tests:
+          - not_null
+          - relationships:
+              to: source('sqillify', 'candidate_profiles')
+              field: candidate_id
+
+      - name: job_id
+        description: Identifier of the matching job.
+        tests:
+          - not_null
+          - relationships:
+              to: ref('stg_jobs')
+              field: job_id
+
+      - name: matched_skill_count
+        description: Number of distinct skills shared by the candidate and job.
+        tests:
+          - not_null
+
+  - name: mart_candidate_job_details
+    description: Candidate-job matches enriched with job details for UI filtering.
+    columns:
+      - name: candidate_id
+        tests:
+          - not_null
+          - relationships:
+              to: source('sqillify', 'candidate_profiles')
+              field: candidate_id
+
+      - name: job_id
+        tests:
+          - not_null
+          - relationships:
+              to: ref('stg_jobs')
+              field: job_id
+
+      - name: matched_skill_count
+        tests:
+          - not_null
+
+      - name: title
+        tests:
+          - not_null
+
+      - name: company
+        tests:
+          - not_null
+
+      - name: experience_level
+        description: Experience category used for optional UI filtering.
+
+      - name: location
+        description: Job location provided by the source.
+
+      - name: remote_status
+        tests:
+          - not_null
+          - accepted_values:
+              values: ["YES", "NO", "UNKNOWN"]
+
+      - name: published_at
+        description: Publication date used for sorting and filtering.
+
+      - name: job_url
+        description: Link to the original job advertisement.

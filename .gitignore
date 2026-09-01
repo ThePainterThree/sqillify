@@ -6,3 +6,15 @@ data/bronze/raw_jobs.json
 data/silver/standard_jobs.json
 data/gold/*.csv
 data/checkpoints/
+kafka-data/
+
+# dbt logs
+**/logs/
+**/target/
+**/dbt_packages/
+
+# Local db user setup
+sql/how_to_create_user.sql
+
+# SQL working file to test queries 
+/sqilify_schema.sql
