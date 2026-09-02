@@ -1,0 +1,125 @@
+name: sqillify-airflow
+
+x-airflow-common: &airflow-common
+  image: sqillify-airflow:3.3.1-dbt1.7.20
+  build:
+    context: .
+    dockerfile: Dockerfile
+  user: "${AIRFLOW_UID:-50000}:0"
+  restart: "no"
+  environment: &airflow-environment
+    AIRFLOW__CORE__EXECUTOR: LocalExecutor
+    AIRFLOW__CORE__PARALLELISM: "1"
+    AIRFLOW__CORE__MAX_ACTIVE_TASKS_PER_DAG: "1"
+    AIRFLOW__CORE__MAX_ACTIVE_RUNS_PER_DAG: "1"
+    AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+    AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "true"
+
+    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: "postgresql+psycopg2://airflow:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}@postgres/airflow"
+    AIRFLOW__CORE__FERNET_KEY: "${AIRFLOW_FERNET_KEY:?Set AIRFLOW_FERNET_KEY}"
+    AIRFLOW__API_AUTH__JWT_SECRET: "${AIRFLOW_JWT_SECRET:?Set AIRFLOW_JWT_SECRET}"
+    AIRFLOW__CORE__EXECUTION_API_SERVER_URL: "http://airflow-apiserver:8080/execution/"
+
+    AIRFLOW__CORE__AUTH_MANAGER: airflow.api_fastapi.auth.managers.simple.simple_auth_manager.SimpleAuthManager
+    AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_USERS: "admin:admin"
+    AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_PASSWORDS_FILE: /opt/airflow/auth/passwords.json
+
+    AIRFLOW__DAG_PROCESSOR__PARSING_PROCESSES: "1"
+
+  volumes:
+    - ./dags:/opt/airflow/dags:ro
+    - ./logs:/opt/airflow/logs
+    - ./auth:/opt/airflow/auth
+
+  depends_on: &airflow-dependencies
+    postgres:
+      condition: service_healthy
+    airflow-init:
+      condition: service_completed_successfully
+
+services:
+  postgres:
+    image: postgres:16
+    restart: "no"
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}"
+      POSTGRES_DB: airflow
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U airflow -d airflow"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  airflow-init:
+    <<: *airflow-common
+    command: db migrate
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  airflow-apiserver:
+    <<: *airflow-common
+    command: api-server --workers 1
+    ports:
+      - "127.0.0.1:8081:8080"
+    healthcheck:
+      test:
+        - CMD
+        - curl
+        - --fail
+        - http://localhost:8080/api/v2/monitor/health
+      interval: 60s
+      timeout: 30s
+      retries: 5
+      start_period: 120s
+
+  airflow-scheduler:
+    <<: *airflow-common
+    command: scheduler
+    environment:
+      <<: *airflow-environment
+      MYSQL_HOST: host.docker.internal
+      MYSQL_PORT: "${MYSQL_PORT:?Set MYSQL_PORT}"
+      MYSQL_DATABASE: "${MYSQL_DATABASE:?Set MYSQL_DATABASE}"
+      MYSQL_USER: "${MYSQL_USER:?Set MYSQL_USER}"
+      MYSQL_PASSWORD: "${MYSQL_PASSWORD:?Set MYSQL_PASSWORD}"
+      DBT_PROFILES_DIR: /opt/dbt/profiles
+      DBT_LOG_PATH: /opt/airflow/logs/dbt
+      DBT_TARGET_PATH: /opt/airflow/logs/dbt-target
+    volumes:
+      - ./dags:/opt/airflow/dags:ro
+      - ./logs:/opt/airflow/logs
+      - ./auth:/opt/airflow/auth
+      - ./config:/opt/dbt/profiles:ro
+      - ../sqillify_dbt:/opt/sqillify_dbt:ro
+    depends_on:
+      <<: *airflow-dependencies
+      airflow-apiserver:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - 'airflow jobs check --job-type SchedulerJob --hostname "$${HOSTNAME}"'
+      interval: 60s
+      timeout: 30s
+      retries: 5
+      start_period: 120s
+
+  airflow-dag-processor:
+    <<: *airflow-common
+    command: dag-processor
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - 'airflow jobs check --job-type DagProcessorJob --hostname "$${HOSTNAME}"'
+      interval: 60s
+      timeout: 30s
+      retries: 5
+      start_period: 120s
+
+volumes:
+  postgres-data:

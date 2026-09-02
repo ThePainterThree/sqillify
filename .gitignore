@@ -13,8 +13,10 @@ kafka-data/
 **/target/
 **/dbt_packages/
 
-# Local db user setup
+
 sql/how_to_create_user.sql
 
-# SQL working file to test queries 
-/sqilify_schema.sql
+/squilify_schema.sql
+
+/airflow/.env
+/airflow/auth/
