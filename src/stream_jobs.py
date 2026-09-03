@@ -1,7 +1,7 @@
 import json
 from pathlib import Path
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import col, from_json
+from pyspark.sql.functions import col, from_json, current_timestamp
 from pyspark.sql.types import ArrayType, BooleanType, StringType, StructField, StructType
 from database import write_jobs_to_mysql
 from matching import add_experience_level, extract_ad_skills
@@ -27,6 +27,7 @@ job_schema = StructType([
     StructField("published_at", StringType()),
     StructField("job_url", StringType()),
     StructField("source", StringType()),
+    
 ])
 
 raw_jobs = (
@@ -53,6 +54,7 @@ jobs_df = (
 
 jobs_df = add_experience_level(jobs_df)
 jobs_df = extract_ad_skills(jobs_df, SKILLS_LIST)
+jobs_df = jobs_df.withColumn("ingested_at", current_timestamp())
 
 checkpoint_path = (
     PROJECT_ROOT
@@ -66,10 +68,9 @@ query = (
     .foreachBatch(write_jobs_to_mysql)
     .outputMode("append")
     .option("checkpointLocation", str(checkpoint_path))
-    .trigger(availableNow=True)
+    .trigger(processingTime="60 seconds")
     .start()
 )
 
 query.awaitTermination()
-
 spark.stop()

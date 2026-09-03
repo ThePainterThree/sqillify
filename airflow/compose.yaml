@@ -30,6 +30,7 @@ x-airflow-common: &airflow-common
     - ./dags:/opt/airflow/dags:ro
     - ./logs:/opt/airflow/logs
     - ./auth:/opt/airflow/auth
+    - ../src:/opt/sqillify/src:ro
 
   depends_on: &airflow-dependencies
     postgres:
@@ -96,6 +97,8 @@ services:
       - ./auth:/opt/airflow/auth
       - ./config:/opt/dbt/profiles:ro
       - ../sqillify_dbt:/opt/sqillify_dbt:ro
+      - ../src:/opt/sqillify/src:ro
+      - ../data:/opt/sqillify/data
     depends_on:
       <<: *airflow-dependencies
       airflow-apiserver:

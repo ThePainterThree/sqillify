@@ -1,5 +1,8 @@
 import os
 from pathlib import Path
+from typing import List
+
+import mysql.connector
 from dotenv import load_dotenv
 from pyspark.sql import DataFrame
 from pyspark.sql.functions import col, to_json
@@ -32,7 +35,9 @@ if missing_settings:
     missing = ", ".join(missing_settings)
     raise ValueError(f"Missing database settings: {missing}")
 
-JDBC_URL = f"jdbc:mysql://{MYSQL_HOST}:{MYSQL_PORT}/{MYSQL_DATABASE}"
+JDBC_URL = (
+    f"jdbc:mysql://{MYSQL_HOST}:{MYSQL_PORT}/{MYSQL_DATABASE}"
+)
 
 def write_jobs_to_mysql(
     batch_df: DataFrame,
@@ -54,16 +59,139 @@ def write_jobs_to_mysql(
         "published_at",
         "job_url",
         "source",
+        "ingested_at",
     )
 
-    (
-        mysql_df.write
-        .format("jdbc")
-        .option("url", JDBC_URL)
-        .option("dbtable", "jobs")
-        .option("user", MYSQL_USER)
-        .option("password", MYSQL_PASSWORD)
-        .option("driver", "com.mysql.cj.jdbc.Driver")
-        .mode("append")
-        .save()
+    rows = mysql_df.collect()
+
+    connection = mysql.connector.connect(
+        host=MYSQL_HOST,
+        port=int(MYSQL_PORT),
+        database=MYSQL_DATABASE,
+        user=MYSQL_USER,
+        password=MYSQL_PASSWORD,
     )
+
+    cursor = connection.cursor()
+
+    sql = """
+        INSERT INTO jobs (
+            job_id,
+            title,
+            company,
+            experience_level,
+            location,
+            remote,
+            description,
+            ad_skills_found,
+            ad_skills_count,
+            published_at,
+            job_url,
+            source,
+            ingested_at
+        )
+        VALUES (
+            %s, %s, %s, %s, %s, %s, %s,
+            %s, %s, %s, %s, %s, %s
+        )
+        ON DUPLICATE KEY UPDATE
+            title = VALUES(title),
+            company = VALUES(company),
+            experience_level = VALUES(experience_level),
+            location = VALUES(location),
+            remote = VALUES(remote),
+            description = VALUES(description),
+            ad_skills_found = VALUES(ad_skills_found),
+            ad_skills_count = VALUES(ad_skills_count),
+            published_at = VALUES(published_at),
+            job_url = VALUES(job_url),
+            source = VALUES(source),
+            ingested_at = VALUES(ingested_at)
+    """
+
+    values = [
+        tuple(row)
+        for row in rows
+    ]
+
+    cursor.executemany(sql, values)
+    connection.commit()
+
+    cursor.close()
+    connection.close()
+
+def save_candidate_preferences(
+    candidate_id: int,
+    skills: List[str],
+    experience_levels: List[str],
+    match_frequency: str,
+) -> None:
+    connection = mysql.connector.connect(
+        host=MYSQL_HOST,
+        port=int(MYSQL_PORT),
+        database=MYSQL_DATABASE,
+        user=MYSQL_USER,
+        password=MYSQL_PASSWORD,
+    )
+
+    cursor = connection.cursor()
+
+    cursor.execute(
+        """
+        UPDATE candidate_profiles
+        SET match_frequency = %s
+        WHERE candidate_id = %s
+        """,
+        (match_frequency, candidate_id),
+    )
+
+    cursor.execute(
+        """
+        DELETE FROM candidate_skills
+        WHERE candidate_id = %s
+        """,
+        (candidate_id,),
+    )
+
+    if skills:
+        cursor.executemany(
+            """
+            INSERT INTO candidate_skills (
+                candidate_id,
+                skill_name
+            )
+            VALUES (%s, %s)
+            """,
+            [
+                (candidate_id, skill)
+                for skill in skills
+            ],
+        )
+
+    cursor.execute(
+        """
+        DELETE FROM candidate_experience_levels
+        WHERE candidate_id = %s
+        """,
+        (candidate_id,),
+    )
+
+    if experience_levels:
+        cursor.executemany(
+            """
+            INSERT INTO candidate_experience_levels (
+                candidate_id,
+                experience_level
+            )
+            VALUES (%s, %s)
+            """,
+            [
+                (candidate_id, level)
+                for level in experience_levels
+            ],
+        )
+
+    connection.commit()
+
+    cursor.close()
+    connection.close()

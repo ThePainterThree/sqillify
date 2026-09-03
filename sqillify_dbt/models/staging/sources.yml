@@ -7,3 +7,4 @@ sources:
       - name: jobs
       - name: candidate_profiles
       - name: candidate_skills
+      - name: candidate_experience_levels

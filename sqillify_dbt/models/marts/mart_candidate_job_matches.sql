@@ -2,6 +2,7 @@
 
 select candidates.candidate_id, jobs.job_id,
     count(distinct skills.skill_name) as matched_skill_count
+
 from {{ ref('stg_jobs') }} as jobs
 
 cross join json_table(
@@ -14,5 +15,9 @@ cross join json_table(
 inner join {{ source('sqillify', 'candidate_skills') }} as candidates
     on lower(trim(candidates.skill_name))
         = lower(trim(skills.skill_name))
+
+inner join {{ source('sqillify', 'candidate_experience_levels') }} as experience
+    on experience.candidate_id = candidates.candidate_id
+    and experience.experience_level = jobs.experience_level
 
 group by candidates.candidate_id, jobs.job_id
